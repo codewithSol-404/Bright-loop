@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brightloop – Discuss</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+</head>
+<body class="h-screen flex bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans overflow-hidden" onclick="closeDiscussPopovers()">
+
+  <div id="overlay" class="fixed inset-0 z-20 hidden bg-black/50 lg:hidden"></div>
+  <aside id="sidebar" class="hidden lg:static lg:flex w-64 shrink-0 flex-col bg-[#0f1b3d] p-5 text-white"></aside>
+
+  <main class="flex-1 flex flex-col h-screen overflow-hidden p-4 sm:p-6">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 shrink-0">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 lg:hidden">☰</button>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Discuss</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Communicate with your customers and team</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3 relative">
+        <div class="relative">
+          <button onclick="toggleDiscussPopover('channelMenu', event)" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800"><span id="channelLabel">All Channels</span> ▼</button>
+          <div id="channelMenu" class="hidden absolute right-0 mt-2 w-40 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-800 z-30">
+            <button onclick="setChannel('All Channels')" class="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700">All Channels</button>
+            <button onclick="setChannel('Support')" class="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700">Support</button>
+            <button onclick="setChannel('Team')" class="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700">Team</button>
+          </div>
+        </div>
+        <button onclick="clearBellDot(this, event)" class="text-slate-500 hover:text-slate-700 relative text-xl">🔔<span id="bellDot" class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span></button>
+        <div class="relative">
+          <button onclick="toggleDiscussPopover('adminMenu', event)" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">AD</span> Admin ▼
+          </button>
+          <div id="adminMenu" class="hidden absolute right-0 mt-2 w-40 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-800 z-30">
+            <a href="settings.html" class="block px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-700">Settings</a>
+            <a href="dashboard.html" onclick="sessionStorage.clear()" class="block px-4 py-2 text-red-600 hover:bg-slate-50 dark:hover:bg-slate-700">Reset Session</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Two-pane Chat Layout -->
+    <div class="flex-1 flex gap-6 overflow-hidden min-h-0">
+      
+      <!-- Left Pane: Chat List -->
+      <div id="chatListPane" class="w-full lg:w-1/3 max-w-sm flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700 overflow-hidden">
+        <!-- Tabs -->
+        <div class="flex border-b border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500">
+          <button onclick="filterChatTab('all', this)" class="chat-tab flex-1 py-3 text-purple-600 border-b-2 border-purple-600">💬 All (<span id="countAll">3</span>)</button>
+          <button onclick="filterChatTab('unread', this)" class="chat-tab flex-1 py-3 hover:bg-slate-50 relative">Unread (<span id="countUnread">2</span>) <span id="unreadTabDot" class="absolute top-2 right-2 h-1.5 w-1.5 bg-red-500 rounded-full"></span></button>
+          <button onclick="filterChatTab('team', this)" class="chat-tab flex-1 py-3 hover:bg-slate-50">👥 Team (<span id="countTeam">2</span>)</button>
+        </div>
+        <!-- Search -->
+        <div class="p-3 border-b border-slate-200 dark:border-slate-700 flex gap-2">
+          <div class="flex-1 relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+            <input id="chatSearchInput" type="text" placeholder="Search conversations..." class="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm outline-none focus:border-purple-500 dark:bg-slate-900 dark:border-slate-600">
+          </div>
+          <button onclick="reverseChatOrder()" title="Sort conversations" class="px-3 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 text-slate-500 dark:bg-slate-800 dark:border-slate-600">Y</button>
+        </div>
+        <!-- Contacts List -->
+        <div id="chatList" class="flex-1 overflow-y-auto">
+          <!-- Active Contact -->
+          <div data-name="Dennis Diaz" data-unread="true" data-team="false" onclick="selectChat(this, 'Dennis Diaz', 'dennis.diaz@example.com')" class="chat-item flex items-start gap-3 p-4 cursor-pointer bg-purple-50 border-l-4 border-purple-600 dark:bg-purple-900/20">
+            <div class="relative shrink-0">
+              <div class="h-10 w-10 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center font-bold">DD</div>
+              <span class="absolute bottom-0 right-0 h-2.5 w-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline mb-0.5"><p class="text-sm font-bold text-slate-900 dark:text-white truncate">Dennis Diaz</p><span class="unread-badge text-xs font-semibold text-purple-600 bg-purple-100 rounded-full h-5 w-5 flex items-center justify-center">2</span></div>
+              <div class="flex justify-between items-baseline"><p class="last-msg text-xs text-slate-600 truncate dark:text-slate-300">Can you help me with subscription...</p><span class="text-[10px] text-slate-400 whitespace-nowrap ml-2">10:24 AM</span></div>
+            </div>
+          </div>
+          <!-- Inactive Contacts -->
+          <div data-name="Maksud alam" data-unread="true" data-team="true" onclick="selectChat(this, 'Maksud alam', 'maksud@example.com')" class="chat-item flex items-start gap-3 p-4 cursor-pointer hover:bg-slate-50 border-l-4 border-transparent dark:hover:bg-slate-700/50">
+            <div class="relative shrink-0">
+              <div class="h-10 w-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">MA</div>
+              <span class="absolute bottom-0 right-0 h-2.5 w-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline mb-0.5"><p class="text-sm font-bold text-slate-900 dark:text-white truncate">Maksud alam</p><span class="unread-badge text-xs font-semibold text-purple-600 bg-purple-100 rounded-full h-5 w-5 flex items-center justify-center">1</span></div>
+              <div class="flex justify-between items-baseline"><p class="last-msg text-xs text-slate-500 truncate dark:text-slate-400">Is there any discount for annual plan?</p><span class="text-[10px] text-slate-400 whitespace-nowrap ml-2">09:47 AM</span></div>
+            </div>
+          </div>
+          <div data-name="William lowe" data-unread="false" data-team="true" onclick="selectChat(this, 'William lowe', 'william@example.com')" class="chat-item flex items-start gap-3 p-4 cursor-pointer hover:bg-slate-50 border-l-4 border-transparent dark:hover:bg-slate-700/50">
+            <div class="relative shrink-0"><div class="h-10 w-10 rounded-full bg-orange-100 text-orange-700 flex items-center justify-center font-bold">WL</div><span class="absolute bottom-0 right-0 h-2.5 w-2.5 bg-emerald-500 border-2 border-white rounded-full"></span></div>
+            <div class="flex-1 min-w-0">
+              <div class="flex justify-between items-baseline mb-0.5"><p class="text-sm font-bold text-slate-900 dark:text-white truncate">William lowe</p></div>
+              <div class="flex justify-between items-baseline"><p class="last-msg text-xs text-slate-500 truncate dark:text-slate-400">Thank you!</p><span class="text-[10px] text-slate-400 whitespace-nowrap ml-2">Yesterday</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Pane: Active Chat Window -->
+      <div id="chatWindowPane" class="hidden lg:flex flex-1 flex-col bg-white rounded-xl border border-slate-200 shadow-sm dark:bg-slate-800 dark:border-slate-700 relative overflow-hidden">
+        
+        <!-- Chat Header -->
+        <div class="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm z-10">
+          <div class="flex items-center gap-3">
+            <button onclick="showMobileChatList()" class="lg:hidden rounded-lg border border-slate-200 px-2.5 py-1 text-sm mr-1">←</button>
+            <div id="chatInitial" class="h-10 w-10 rounded-full bg-purple-200 text-purple-700 flex items-center justify-center font-bold text-lg">DD</div>
+            <div>
+              <h2 id="chatName" class="text-base font-bold text-slate-900 dark:text-white leading-tight">Dennis Diaz</h2>
+              <p class="text-xs text-slate-500 flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-emerald-500 inline-block"></span> <span id="chatEmail">dennis.diaz@example.com</span> • Active</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 relative">
+            <button onclick="startCall('Audio')" class="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-600 dark:hover:bg-slate-700">📞</button>
+            <button onclick="startCall('Video')" class="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-600 dark:hover:bg-slate-700">📹</button>
+            <button onclick="toggleDiscussPopover('chatMoreMenu', event)" class="h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 dark:border-slate-600 dark:hover:bg-slate-700">⋮</button>
+            <div id="chatMoreMenu" class="hidden absolute right-0 top-11 w-44 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-800 z-30">
+              <button onclick="simulateIncomingReply()" class="block w-full px-4 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700">Simulate Reply</button>
+              <button onclick="clearCurrentChat()" class="block w-full px-4 py-2 text-left text-red-600 hover:bg-slate-50 dark:hover:bg-slate-700">Clear Conversation</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat History -->
+        <div id="chatHistory" class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-slate-900/20"></div>
+
+        <!-- Chat Input -->
+        <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 relative">
+          <div id="emojiPicker" class="hidden absolute bottom-20 right-16 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg p-2 flex gap-2 text-xl z-20">
+            <button onclick="insertEmoji('😊')">😊</button>
+            <button onclick="insertEmoji('👍')">👍</button>
+            <button onclick="insertEmoji('🎉')">🎉</button>
+            <button onclick="insertEmoji('🚀')">🚀</button>
+            <button onclick="insertEmoji('✅')">✅</button>
+          </div>
+          <input id="chatFileInput" type="file" class="hidden" onchange="attachFile(this)">
+          <div class="flex items-center gap-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-2 pr-2 shadow-inner focus-within:border-purple-400 transition-colors">
+            <button onclick="document.getElementById('chatFileInput').click()" class="text-slate-400 hover:text-slate-600 px-2 text-lg">📎</button>
+            <input id="msgInput" type="text" placeholder="Type a message..." class="flex-1 bg-transparent outline-none text-sm dark:text-white placeholder-slate-400">
+            <button onclick="toggleDiscussPopover('emojiPicker', event)" class="text-slate-400 hover:text-slate-600 px-2">😊</button>
+            <button onclick="sendMsg()" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg h-9 w-10 flex items-center justify-center transition-colors">➤</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="layout.js"></script>
+  <script>
+    let chatData = JSON.parse(localStorage.getItem('brightloop_chats')) || {
+      'Dennis Diaz': [
+        { sender: 'them', text: 'Can you help me with subscription renewal?', time: '09:32 AM' },
+        { sender: 'me', text: "Of course! I'll check your account and get back to you shortly.", time: '09:35 AM' },
+        { sender: 'them', text: 'Thank you!', time: '09:40 AM' },
+        { sender: 'me', text: "You're welcome! Let me know if you need any further assistance.", time: '10:12 AM' }
+      ],
+      'Maksud alam': [
+        { sender: 'them', text: 'Is there any discount for annual plan?', time: '09:47 AM' }
+      ],
+      'William lowe': [
+        { sender: 'them', text: 'Thank you!', time: 'Yesterday' }
+      ]
+    };
+
+    let activeContact = 'Dennis Diaz';
+    let activeEmail = 'dennis.diaz@example.com';
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]));
+    }
+
+    function saveChats() {
+      localStorage.setItem('brightloop_chats', JSON.stringify(chatData));
+    }
+
+    function updateTabCounts() {
+      const items = Array.from(document.querySelectorAll('.chat-item'));
+      const unreadCount = items.filter(i => i.dataset.unread === 'true').length;
+      const teamCount = items.filter(i => i.dataset.team === 'true').length;
+      document.getElementById('countAll').textContent = items.length;
+      document.getElementById('countUnread').textContent = unreadCount;
+      document.getElementById('countTeam').textContent = teamCount;
+      document.getElementById('unreadTabDot').classList.toggle('hidden', unreadCount === 0);
+    }
+
+    function renderHistory() {
+      const history = document.getElementById('chatHistory');
+      const messages = chatData[activeContact] || [];
+      
+      let html = `<div class="flex justify-center"><span class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full text-xs text-slate-500 shadow-sm">Jun 7, 2025</span></div>`;
+      
+      messages.forEach(msg => {
+        const safeText = escapeHtml(msg.text);
+        if (msg.sender === 'me') {
+          html += `
+            <div class="flex items-end justify-end gap-2">
+              <div class="max-w-[75%] flex flex-col items-end">
+                <div class="bg-purple-200 text-purple-900 rounded-2xl rounded-br-none p-3 shadow-sm text-sm">${safeText}</div>
+                <p class="text-[10px] text-slate-400 mt-1 mr-1 flex items-center gap-1">${msg.time} <span class="text-blue-500 font-bold">✓✓</span></p>
+              </div>
+              <div class="h-8 w-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">AD</div>
+            </div>`;
+        } else {
+          html += `
+            <div class="flex items-end gap-2">
+              <div class="h-8 w-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-xs shrink-0">${activeContact.split(' ').map(n=>n[0]).join('')}</div>
+              <div class="max-w-[75%]">
+                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-none p-3 shadow-sm text-sm text-slate-700 dark:text-slate-200">${safeText}</div>
+                <p class="text-[10px] text-slate-400 mt-1 ml-1">${msg.time}</p>
+              </div>
+            </div>`;
+        }
+      });
+      
+      history.innerHTML = html;
+      history.scrollTop = history.scrollHeight;
+    }
+
+    function selectChat(element, name, email) {
+      document.querySelectorAll('.chat-item').forEach(el => {
+        el.classList.remove('bg-purple-50', 'border-purple-600', 'dark:bg-purple-900/20');
+        el.classList.add('border-transparent', 'hover:bg-slate-50');
+      });
+      element.classList.add('bg-purple-50', 'border-purple-600', 'dark:bg-purple-900/20');
+      element.classList.remove('border-transparent', 'hover:bg-slate-50');
+      element.dataset.unread = 'false';
+      const badge = element.querySelector('.unread-badge');
+      if (badge) badge.classList.add('hidden');
+      updateTabCounts();
+
+      activeContact = name;
+      activeEmail = email;
+
+      document.getElementById('chatName').innerText = name;
+      document.getElementById('chatEmail').innerText = email;
+      document.getElementById('chatInitial').innerText = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+      
+      // On small screens (< lg), show chat window pane when a contact is tapped
+      if (window.innerWidth < 1024) {
+        document.getElementById('chatListPane').classList.add('hidden');
+        document.getElementById('chatWindowPane').classList.remove('hidden');
+        document.getElementById('chatWindowPane').classList.add('flex');
+      }
+
+      renderHistory();
+    }
+
+    function showMobileChatList() {
+      document.getElementById('chatWindowPane').classList.add('hidden');
+      document.getElementById('chatWindowPane').classList.remove('flex');
+      document.getElementById('chatListPane').classList.remove('hidden');
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+      if (!text) return;
+      
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (!chatData[activeContact]) chatData[activeContact] = [];
+      chatData[activeContact].push({ sender: 'me', text: text, time: time });
+      saveChats();
+
+      const activeItem = document.querySelector(`.chat-item[data-name="${activeContact}"] .last-msg`);
+      if (activeItem) activeItem.textContent = text;
+      
+      input.value = '';
+      renderHistory();
+    }
+
+    function simulateIncomingReply() {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const reply = 'Thanks for the quick update! Sounds great.';
+      if (!chatData[activeContact]) chatData[activeContact] = [];
+      chatData[activeContact].push({ sender: 'them', text: reply, time: time });
+      saveChats();
+      const activeItem = document.querySelector(`.chat-item[data-name="${activeContact}"] .last-msg`);
+      if (activeItem) activeItem.textContent = reply;
+      renderHistory();
+      closeDiscussPopovers();
+    }
+
+    document.getElementById('msgInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') sendMsg();
+    });
+
+    document.getElementById('chatSearchInput').addEventListener('input', function(e) {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll('.chat-item').forEach(item => {
+        item.style.display = item.dataset.name.toLowerCase().includes(q) ? '' : 'none';
+      });
+    });
+
+    function filterChatTab(type, btn) {
+      document.querySelectorAll('.chat-tab').forEach(b => {
+        b.classList.remove('text-purple-600', 'border-b-2', 'border-purple-600');
+      });
+      btn.classList.add('text-purple-600', 'border-b-2', 'border-purple-600');
+      document.querySelectorAll('.chat-item').forEach(item => {
+        if (type === 'all') item.style.display = '';
+        else if (type === 'unread') item.style.display = item.dataset.unread === 'true' ? '' : 'none';
+        else if (type === 'team') item.style.display = item.dataset.team === 'true' ? '' : 'none';
+      });
+    }
+
+    function reverseChatOrder() {
+      const list = document.getElementById('chatList');
+      const items = Array.from(list.children);
+      items.reverse().forEach(i => list.appendChild(i));
+    }
+
+    function toggleDiscussPopover(id, e) {
+      e.stopPropagation();
+      const el = document.getElementById(id);
+      const hidden = el.classList.contains('hidden');
+      closeDiscussPopovers();
+      if (hidden) el.classList.remove('hidden');
+    }
+
+    function closeDiscussPopovers() {
+      ['channelMenu', 'adminMenu', 'chatMoreMenu', 'emojiPicker'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+    }
+
+    function setChannel(name) {
+      document.getElementById('channelLabel').textContent = name;
+      if (name === 'Team') {
+        document.querySelectorAll('.chat-item').forEach(item => {
+          item.style.display = item.dataset.team === 'true' ? '' : 'none';
+        });
+      } else {
+        document.querySelectorAll('.chat-item').forEach(item => item.style.display = '');
+      }
+      closeDiscussPopovers();
+    }
+
+    function clearBellDot(btn, e) {
+      e.stopPropagation();
+      const dot = document.getElementById('bellDot');
+      if (dot) dot.classList.add('hidden');
+      alert('All notifications marked as read.');
+    }
+
+    function insertEmoji(emoji) {
+      const input = document.getElementById('msgInput');
+      input.value += emoji;
+      input.focus();
+      closeDiscussPopovers();
+    }
+
+    function attachFile(input) {
+      if (input.files && input.files[0]) {
+        document.getElementById('msgInput').value = `📎 [Attached: ${input.files[0].name}] `;
+        document.getElementById('msgInput').focus();
+      }
+    }
+
+    function startCall(type) {
+      alert(`Starting ${type} call with ${activeContact}...`);
+    }
+
+    function clearCurrentChat() {
+      chatData[activeContact] = [];
+      saveChats();
+      renderHistory();
+      closeDiscussPopovers();
+    }
+
+    updateTabCounts();
+    renderHistory();
+  </script>
+</body>
+</html>
