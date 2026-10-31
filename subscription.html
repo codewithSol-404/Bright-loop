@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brightloop – Subscription Management</title>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' };
+  </script>
+
+  <style type="text/tailwindcss">
+    @layer components {
+      .card  { @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-slate-800; }
+      .muted { @apply text-slate-500 dark:text-slate-400; }
+      .nav-item { @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-slate-300 hover:bg-white/10; }
+      .head-btn { @apply flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm hover:bg-slate-50 dark:border-white/10 dark:bg-slate-800 dark:hover:bg-slate-700; }
+      .menu { @apply absolute right-0 z-10 mt-2 w-44 rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-white/10 dark:bg-slate-800; }
+      .menu-item { @apply w-full px-4 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700; }
+    }
+  </style>
+</head>
+
+<body class="h-screen flex bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans">
+
+  <div id="overlay" class="fixed inset-0 z-20 hidden bg-black/50 lg:hidden"></div>
+
+  <!-- layout.js fills this in with the sidebar -->
+  <aside id="sidebar" class="hidden lg:static lg:flex w-64 shrink-0 flex-col bg-[#0f1b3d] p-5 text-white"></aside>
+
+  <main class="flex-1 overflow-y-auto p-6">
+    <!-- HEADER -->
+    <header class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" aria-label="Open menu" class="head-btn lg:hidden">☰</button>
+        <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Subscription Management</h1>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="relative">
+          <button id="productBtn" class="head-btn">
+            <span id="productLabel">All Products</span> <span class="text-xs ml-1">▼</span>
+          </button>
+          <ul id="productMenu" class="menu hidden">
+            <li><button data-value="all" class="menu-item">All Products</button></li>
+            <li><button data-value="a" class="menu-item">Starter plan</button></li>
+            <li><button data-value="b" class="menu-item">Pro plan</button></li>
+          </ul>
+        </div>
+
+        <div class="relative">
+          <button id="rangeBtn" class="head-btn">
+            <span id="rangeLabel">Last 3 Days</span> <span class="text-xs ml-1">▼</span>
+          </button>
+          <ul id="rangeMenu" class="menu hidden">
+            <li><button data-value="3" class="menu-item">Last 3 Days</button></li>
+            <li><button data-value="7" class="menu-item">Last 7 Days</button></li>
+            <li><button data-value="30" class="menu-item">Last 30 Days</button></li>
+          </ul>
+        </div>
+      </div>
+    </header>
+
+    <div class="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-3">
+
+      <!-- LEFT COLUMN -->
+      <div class="space-y-6 xl:col-span-2">
+        <!-- LINE CHART -->
+        <section class="card">
+          <h2 class="text-lg font-medium">Activations vs Net Cancellations</h2>
+          <div class="mt-3 flex items-center gap-5 text-sm">
+            <button id="legendAct" class="flex items-center gap-2 transition-opacity"><span class="h-2.5 w-2.5 rounded-full bg-purple-500"></span> Activations</button>
+            <button id="legendNet" class="flex items-center gap-2 transition-opacity"><span class="h-2.5 w-2.5 rounded-full bg-indigo-600"></span> Net Cancellations</button>
+          </div>
+
+          <svg viewBox="0 0 600 220" class="mt-2 w-full text-slate-400">
+            <g stroke="currentColor" stroke-opacity="0.2" stroke-dasharray="4 4">
+              <line x1="40" y1="10"  x2="590" y2="10"/>
+              <line x1="40" y1="55"  x2="590" y2="55"/>
+              <line x1="40" y1="100" x2="590" y2="100"/>
+              <line x1="40" y1="145" x2="590" y2="145"/>
+              <line x1="40" y1="190" x2="590" y2="190"/>
+            </g>
+            <g fill="currentColor" font-size="11" text-anchor="end" class="text-slate-500">
+              <text x="30" y="14">80</text>
+              <text x="30" y="59">60</text>
+              <text x="30" y="104">40</text>
+              <text x="30" y="149">20</text>
+              <text x="30" y="194">0</text>
+            </g>
+            <g fill="currentColor" font-size="11" text-anchor="middle" class="text-slate-500">
+              <text x="40"  y="212">Jan</text><text x="89"  y="212">Feb</text>
+              <text x="138" y="212">Mar</text><text x="187" y="212">Apr</text>
+              <text x="236" y="212">May</text><text x="285" y="212">Jun</text>
+              <text x="334" y="212">Jul</text><text x="384" y="212">Aug</text>
+              <text x="433" y="212">Sep</text><text x="482" y="212">Oct</text>
+              <text x="531" y="212">Nov</text><text x="580" y="212">Dec</text>
+            </g>
+            <polygon  id="actArea" fill="#a855f7" fill-opacity="0.12" points=""/>
+            <polyline id="actLine" fill="none" stroke="#a855f7" stroke-width="2" points=""/>
+            <polyline id="netLine" fill="none" stroke="#4f46e5" stroke-width="2" points=""/>
+            <circle   id="netDot" cx="580" cy="100" r="3.5" fill="#4f46e5"/>
+          </svg>
+        </section>
+
+        <!-- TWO CHARTS -->
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <!-- Customer Growth -->
+          <section class="card">
+            <h2 class="text-lg font-medium mb-4">Customer Growth</h2>
+            <div class="flex h-44">
+              <div class="flex flex-col justify-between text-xs text-slate-500 pr-3 text-right">
+                <span>100</span><span>80</span><span>60</span><span>40</span><span>20</span><span>0</span>
+              </div>
+              <div id="bars" class="flex-1 flex items-end justify-between gap-3 border-b border-dashed border-slate-200 dark:border-white/20"></div>
+            </div>
+            <div class="muted mt-2 flex justify-between text-xs pl-8">
+              <span class="flex-1 text-center">Jan</span><span class="flex-1 text-center">Feb</span>
+              <span class="flex-1 text-center">Mar</span><span class="flex-1 text-center">Apr</span>
+              <span class="flex-1 text-center">May</span><span class="flex-1 text-center">Jun</span>
+            </div>
+          </section>
+
+          <!-- Top 5 Expenses -->
+          <section class="card">
+            <h2 class="text-lg font-medium">Top 5 Expenses by Category</h2>
+            <div class="mt-8 space-y-4 text-sm">
+              <div class="flex items-center gap-3"><span class="w-20 shrink-0 text-right text-slate-600">Personal</span><div class="h-5 rounded-sm bg-violet-500" style="width:95%" title="$9.5k"></div></div>
+              <div class="flex items-center gap-3"><span class="w-20 shrink-0 text-right text-slate-600">Education</span><div class="h-5 rounded-sm bg-emerald-500" style="width:80%" title="$8.0k"></div></div>
+              <div class="flex items-center gap-3"><span class="w-20 shrink-0 text-right text-slate-600">Phone</span><div class="h-5 rounded-sm bg-indigo-600" style="width:92%" title="$9.2k"></div></div>
+              <div class="flex items-center gap-3"><span class="w-20 shrink-0 text-right text-slate-600">Rent or Lease</span><div class="h-5 rounded-sm bg-sky-500" style="width:62%" title="$6.2k"></div></div>
+              <div class="flex items-center gap-3"><span class="w-20 shrink-0 text-right text-slate-600">Travel</span><div class="h-5 rounded-sm bg-pink-500" style="width:34%" title="$3.4k"></div></div>
+            </div>
+            <div class="muted ml-[92px] mt-4 flex justify-between text-xs">
+              <span>0k</span><span>2k</span><span>4k</span><span>6k</span><span>8k</span><span>10k</span>
+            </div>
+          </section>
+        </div>
+
+        <!-- INVOICES -->
+        <section class="card !p-0 overflow-hidden">
+          <div class="flex flex-wrap items-center justify-between gap-3 p-5 border-b border-slate-100 dark:border-slate-700">
+            <h2 class="text-lg font-medium">Invoices (<span id="invoiceCount">12</span>)</h2>
+            <button onclick="addMockInvoice()" title="Add Invoice" class="rounded-md border border-slate-200 bg-white px-3 py-1 text-lg hover:bg-slate-50 text-slate-600 leading-none pb-2 shadow-sm dark:bg-slate-700 dark:border-slate-600">...</button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[560px] text-left text-sm">
+              <thead class="bg-slate-50/50 dark:bg-slate-700/30 text-slate-500">
+                <tr>
+                  <th class="px-5 py-3 font-medium">Invoice Number</th>
+                  <th class="px-5 py-3 font-medium">Date</th>
+                  <th class="px-5 py-3 font-medium">Amount</th>
+                  <th class="px-5 py-3 font-medium">Download</th>
+                </tr>
+              </thead>
+              <tbody id="invoiceBody" class="divide-y divide-slate-100 dark:divide-white/10"></tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div class="space-y-6">
+        <!-- Churn gauge -->
+        <section class="card">
+          <h2 class="text-lg font-medium">Churn Rate</h2>
+          <svg viewBox="0 0 200 120" class="mx-auto mt-2 w-full max-w-[260px]">
+            <path d="M20 100 A80 80 0 0 1 180 100" fill="none" stroke="#4f55d6" stroke-width="18"/>
+            <path id="gaugeFill" d="M20 100 A80 80 0 0 1 149.6 37.2" fill="none" stroke="#7c4ddb" stroke-width="18"/>
+            <circle cx="100" cy="68" r="8" fill="#0ea5e9"/>
+            <g fill="currentColor" font-size="10" class="text-slate-500">
+              <text x="14" y="116">0</text>
+              <text x="176" y="116">100</text>
+            </g>
+            <text id="gaugeLabel" x="100" y="116" text-anchor="middle" font-size="11" fill="currentColor">71.30%</text>
+          </svg>
+        </section>
+
+        <div class="card !p-5">
+          <p class="text-sm text-slate-500">Net Revenue</p>
+          <p id="revenue" class="mt-1 text-3xl font-bold text-slate-900 dark:text-white">$15,000</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="card !p-5">
+            <p class="text-sm text-slate-500">Customers</p>
+            <p id="customers" class="mt-1 text-3xl font-bold text-slate-900 dark:text-white">190</p>
+          </div>
+          <div class="card !p-5">
+            <p class="text-sm text-slate-500">Subscriptions</p>
+            <p id="subs" class="mt-1 text-3xl font-bold text-slate-900 dark:text-white">126</p>
+          </div>
+        </div>
+
+        <!-- Recent Subscriptions -->
+        <section class="card">
+          <h2 class="text-lg font-medium mb-2">Recent Subscriptions</h2>
+          <ul class="divide-y divide-slate-100 dark:divide-white/10">
+            <li class="flex items-center gap-3 py-3">
+              <span class="h-10 w-10 rounded-full bg-teal-500"></span>
+              <div class="flex-1 text-sm"><p class="font-medium text-slate-700 dark:text-slate-200">Dennis Diaz</p><p class="muted text-xs">Feb 24, 12:00 pm</p></div>
+              <div class="text-right text-sm text-slate-700 dark:text-slate-200 font-medium">$14.99<p class="muted text-xs font-normal">/month</p></div>
+            </li>
+            <li class="flex items-center gap-3 py-3">
+              <span class="h-10 w-10 rounded-full bg-orange-400"></span>
+              <div class="flex-1 text-sm"><p class="font-medium text-slate-700 dark:text-slate-200">Maksud alam</p><p class="muted text-xs">Feb 28, 3:00 pm</p></div>
+              <div class="text-right text-sm text-slate-700 dark:text-slate-200 font-medium">$8.99<p class="muted text-xs font-normal">/month</p></div>
+            </li>
+            <li class="flex items-center gap-3 py-3">
+              <span class="h-10 w-10 rounded-full bg-yellow-400"></span>
+              <div class="flex-1 text-sm"><p class="font-medium text-slate-700 dark:text-slate-200">William lowe</p><p class="muted text-xs">Apr 08, 12:45 pm</p></div>
+              <div class="text-right text-sm text-slate-700 dark:text-slate-200 font-medium">$12.99<p class="muted text-xs font-normal">/month</p></div>
+            </li>
+            <li class="flex items-center gap-3 py-3">
+              <span class="h-10 w-10 rounded-full bg-purple-500"></span>
+              <div class="flex-1 text-sm"><p class="font-medium text-slate-700 dark:text-slate-200">Nathan</p><p class="muted text-xs">Jun 17, 7:30 pm</p></div>
+              <div class="text-right text-sm text-slate-700 dark:text-slate-200 font-medium">$19.99<p class="muted text-xs font-normal">/month</p></div>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Updated gradient block -->
+        <section class="rounded-xl bg-gradient-to-br from-indigo-100 to-purple-200 p-5 text-slate-800 shadow-sm border border-indigo-50">
+          <h2 class="text-lg font-bold">Used space</h2>
+          <p class="mt-1 text-sm text-slate-700 pr-4">Your team has used 80% of your available space. Need more?</p>
+          <div class="mt-4 h-2 w-full rounded-full bg-white/70 overflow-hidden">
+            <div class="h-full w-4/5 rounded-full bg-indigo-600"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="layout.js"></script>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const state = { range: '3', product: 'all', selectedBar: 2, showAct: true, showNet: true };
+
+    const rangeData = {
+      3:  { act: [32,32,36,33,44,50,41,42,46,55,62,70], net: [22,25,22,22,24,26,20,28,30,32,35,40], growth: [75,50,76,22,96,0],  rev: 15000, cust: 190, subs: 126, churn: '71.30%' },
+      7:  { act: [28,30,34,38,41,47,52,50,58,63,68,74], net: [20,22,24,23,27,30,28,33,35,36,38,42], growth: [60,68,72,55,84,40], rev: 21400, cust: 245, subs: 178, churn: '64.80%' },
+      30: { act: [40,42,45,50,55,58,62,66,69,72,76,78], net: [30,31,33,35,36,38,40,42,43,45,46,48], growth: [82,90,70,88,94,66], rev: 48900, cust: 512, subs: 390, churn: '58.20%' }
+    };
+
+    const productMultiplier = { all: 1, a: 0.6, b: 1.35 };
+
+    const invoices = [
+      { no: '8FB28438-0001', date: 'Jun 7, 3:36 PM',  amount: 580 },
+      { no: '8FB28438-0001', date: 'Jun 7, 3:36 PM',  amount: 580 },
+      { no: '8FB28438-0001', date: 'Jun 7, 3:36 PM',  amount: 580 },
+    ];
+
+    function toPoints(values) {
+      return values.map((v, i) => `${(40 + i * 49.09).toFixed(1)},${(190 - v * 2.25).toFixed(1)}`).join(' ');
+    }
+
+    function renderLine(act, net) {
+      const a = toPoints(act);
+      $('actLine').setAttribute('points', a);
+      $('actArea').setAttribute('points', `${a} 580,190 40,190`);
+      $('netLine').setAttribute('points', toPoints(net));
+      $('netDot').setAttribute('cy', 190 - net[net.length - 1] * 2.25);
+
+      $('actLine').style.display = state.showAct ? '' : 'none';
+      $('actArea').style.display = state.showAct ? '' : 'none';
+      $('netLine').style.display = state.showNet ? '' : 'none';
+      $('netDot').style.display  = state.showNet ? '' : 'none';
+    }
+
+    function renderBars(values) {
+      $('bars').innerHTML = values.map((v, i) => {
+        const selected = i === state.selectedBar;
+        return `
+          <button data-i="${i}" class="group flex h-full flex-1 items-end focus:outline-none">
+            <span class="relative block w-full rounded-t-sm transition-colors ${selected ? 'bg-indigo-600' : 'bg-indigo-50 group-hover:bg-indigo-200 dark:bg-indigo-300/20'}"
+                  style="height:${v}%">
+              <span class="absolute -top-7 left-1/2 -translate-x-1/2 rounded bg-slate-900 px-2 py-1 text-xs text-white shadow-md ${selected ? '' : 'hidden group-hover:block'}">${v}</span>
+            </span>
+          </button>`;
+      }).join('');
+    }
+
+    function renderInvoices() {
+      $('invoiceBody').innerHTML = invoices.map((inv, idx) => `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+          <td onclick="alert('Invoice ${inv.no} — $${inv.amount} (${inv.date})')" class="px-5 py-4 text-indigo-600 hover:underline cursor-pointer font-medium">${inv.no}</td>
+          <td class="px-5 py-4 text-slate-600 dark:text-slate-300">${inv.date}</td>
+          <td class="px-5 py-4 text-slate-700 dark:text-slate-200">$${inv.amount}</td>
+          <td class="px-5 py-4">
+            <button onclick="downloadInvoice('${inv.no}', ${inv.amount}, '${inv.date}')" class="text-slate-400 hover:text-indigo-600 flex items-center gap-1"><span class="text-lg leading-none">↓</span> ▤</button>
+          </td>
+        </tr>`).join('');
+    }
+
+    function downloadInvoice(no, amt, date) {
+      const blob = new Blob([`Brightloop Invoice\nInvoice #: ${no}\nDate: ${date}\nAmount: $${amt}\nStatus: Paid`], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${no}.txt`;
+      a.click();
+    }
+
+    function addMockInvoice() {
+      const nextNum = String(invoices.length + 1).padStart(4, '0');
+      invoices.unshift({ no: `8FB28438-${nextNum}`, date: 'Today, Just now', amount: 580 });
+      $('invoiceCount').textContent = parseInt($('invoiceCount').textContent, 10) + 1;
+      renderInvoices();
+    }
+
+    function update() {
+      const d = rangeData[state.range];
+      const mult = productMultiplier[state.product] || 1;
+      const scaledAct = d.act.map(v => Math.min(80, Math.round(v * mult)));
+      const scaledNet = d.net.map(v => Math.min(80, Math.round(v * mult)));
+      renderLine(scaledAct, scaledNet);
+      renderBars(d.growth);
+      renderInvoices();
+
+      $('revenue').textContent = '$' + Math.round(d.rev * mult).toLocaleString();
+      $('customers').textContent = Math.round(d.cust * mult);
+      $('subs').textContent = Math.round(d.subs * mult);
+      $('gaugeLabel').textContent = d.churn;
+    }
+
+    $('legendAct').addEventListener('click', () => {
+      state.showAct = !state.showAct;
+      $('legendAct').classList.toggle('opacity-40', !state.showAct);
+      update();
+    });
+
+    $('legendNet').addEventListener('click', () => {
+      state.showNet = !state.showNet;
+      $('legendNet').classList.toggle('opacity-40', !state.showNet);
+      update();
+    });
+
+    $('bars').addEventListener('click', (e) => {
+      const bar = e.target.closest('button');
+      if (bar) { state.selectedBar = Number(bar.dataset.i); update(); }
+    });
+
+    const dropdowns = [];
+    function closeMenus() { dropdowns.forEach(dd => dd.menu.classList.add('hidden')); }
+    function setupDropdown(name, onPick) {
+      const btn = $(name + 'Btn'); const menu = $(name + 'Menu'); const label = $(name + 'Label');
+      dropdowns.push({ btn, menu });
+      btn.addEventListener('click', () => {
+        const wasClosed = menu.classList.contains('hidden'); closeMenus();
+        if (wasClosed) menu.classList.remove('hidden');
+      });
+      menu.querySelectorAll('button').forEach(opt => {
+        opt.addEventListener('click', () => { label.textContent = opt.textContent.trim(); closeMenus(); onPick(opt.dataset.value); });
+      });
+    }
+
+    setupDropdown('product', (value) => { state.product = value; update(); });
+    setupDropdown('range', (value) => { state.range = value; update(); });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdowns.some(dd => dd.btn.contains(e.target) || dd.menu.contains(e.target))) closeMenus();
+    });
+
+    update();
+  </script>
+</body>
+</html>

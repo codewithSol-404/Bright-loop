@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brightloop – Payment Approval</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .fade-in { animation: fadeIn 0.2s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="h-screen flex bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans" onclick="closeApprovalMenus()">
+
+  <div id="overlay" class="fixed inset-0 z-20 hidden bg-black/50 lg:hidden"></div>
+  <aside id="sidebar" class="hidden lg:static lg:flex w-64 shrink-0 flex-col bg-[#0f1b3d] p-5 text-white"></aside>
+
+  <main class="flex-1 overflow-y-auto p-6 relative">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 lg:hidden">☰</button>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Payment &amp; Discount Approval</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Review and authorize customer refunds, payouts, billing credits, and discounts</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Status Filter Dropdown -->
+        <div class="relative">
+          <button onclick="toggleApprovalMenu('statusMenu', event)" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800 hover:bg-slate-50 transition-colors">
+            🔎 <span id="activeStatusLabel">All Statuses</span> <span class="text-xs ml-1 text-slate-400">▼</span>
+          </button>
+          <div id="statusMenu" class="hidden fade-in absolute right-0 mt-2 w-40 rounded-lg shadow-lg bg-white border border-slate-100 z-30 dark:bg-slate-800 dark:border-slate-700 py-1">
+            <button onclick="setStatusFilter('all', 'All Statuses')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">All Statuses</button>
+            <button onclick="setStatusFilter('Pending', 'Pending')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">Pending</button>
+            <button onclick="setStatusFilter('Approved', 'Approved')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">Approved</button>
+            <button onclick="setStatusFilter('Rejected', 'Rejected')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">Rejected</button>
+          </div>
+        </div>
+
+        <!-- Date Range Dropdown -->
+        <div class="relative">
+          <button onclick="toggleApprovalMenu('dateMenu', event)" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800 hover:bg-slate-50 transition-colors">
+            📅 <span id="activePeriodLabel">Last 30 Days</span> <span class="text-xs ml-1 text-slate-400">▼</span>
+          </button>
+          <div id="dateMenu" class="hidden fade-in absolute right-0 mt-2 w-40 rounded-lg shadow-lg bg-white border border-slate-100 z-30 dark:bg-slate-800 dark:border-slate-700 py-1">
+            <button onclick="setApprovalPeriod('Last 7 Days')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">Last 7 Days</button>
+            <button onclick="setApprovalPeriod('Last 30 Days')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">Last 30 Days</button>
+            <button onclick="setApprovalPeriod('This Year')" class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-700">This Year</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Interactive Tabs (matching settings.html style) -->
+    <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 mb-6 font-medium text-sm text-slate-500">
+      <button id="tabBtnAll" onclick="switchApprovalTab('all', this)" class="ap-tab-btn px-4 py-3 text-purple-600 border-b-2 border-purple-600 flex items-center gap-2 whitespace-nowrap">📋 All Approvals</button>
+      <button id="tabBtnRefunds" onclick="switchApprovalTab('Refund', this)" class="ap-tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🔄 Refunds &amp; Credits</button>
+      <button id="tabBtnDiscounts" onclick="switchApprovalTab('discounts', this)" class="ap-tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🏷️ Discounts (<span id="discountTabBadge">4</span>)</button>
+      <button id="tabBtnPayouts" onclick="switchApprovalTab('Payout', this)" class="ap-tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">💸 Payouts &amp; Disputes</button>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div onclick="setStatusFilter('Pending', 'Pending')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 relative overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-400 text-white text-xl z-10">⏳</div>
+        <div class="min-w-0 z-10">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Pending Approvals</p>
+          <p id="kpiPendingCount" class="text-2xl font-bold">4</p>
+          <p id="kpiPendingValue" class="text-xs text-orange-500 mt-1">$1,009.89 awaiting action</p>
+        </div>
+        <svg class="absolute bottom-0 right-0 w-32 h-16 text-orange-100 dark:text-orange-900/30" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="M0,50 L0,20 Q25,30 50,15 T100,5 L100,50 Z" fill="currentColor"></path></svg>
+      </div>
+
+      <div onclick="setStatusFilter('Approved', 'Approved')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 relative overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white text-xl z-10">✓</div>
+        <div class="min-w-0 z-10">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Approved Refunds</p>
+          <p id="kpiApprovedAmount" class="text-2xl font-bold">$629.99</p>
+          <p id="kpiApprovedCount" class="text-xs text-emerald-500 mt-1">↑ 2 requests processed</p>
+        </div>
+        <svg class="absolute bottom-0 right-0 w-32 h-16 text-emerald-100 dark:text-emerald-900/30" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="M0,50 L0,25 Q25,10 50,20 T100,10 L100,50 Z" fill="currentColor"></path></svg>
+      </div>
+
+      <div onclick="switchApprovalTab('discounts', document.getElementById('tabBtnDiscounts'))" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 relative overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white text-xl z-10">🏷️</div>
+        <div class="min-w-0 z-10">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Active Discounts</p>
+          <p id="kpiActiveDiscounts" class="text-2xl font-bold">2</p>
+          <p id="kpiPendingDiscounts" class="text-xs text-purple-600 dark:text-purple-400 mt-1">2 pending approval</p>
+        </div>
+        <svg class="absolute bottom-0 right-0 w-32 h-16 text-purple-100 dark:text-purple-900/30" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="M0,50 L0,30 Q25,40 50,20 T100,15 L100,50 Z" fill="currentColor"></path></svg>
+      </div>
+
+      <div onclick="setStatusFilter('Rejected', 'Rejected')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 relative overflow-hidden hover:-translate-y-1 hover:shadow-md transition-all cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white text-xl z-10">✕</div>
+        <div class="min-w-0 z-10">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Rejected Requests</p>
+          <p id="kpiRejectedCount" class="text-2xl font-bold">1</p>
+          <p id="kpiRejectedAmount" class="text-xs text-red-500 mt-1">$159.92 declined</p>
+        </div>
+        <svg class="absolute bottom-0 right-0 w-32 h-16 text-blue-100 dark:text-blue-900/30" viewBox="0 0 100 50" preserveAspectRatio="none"><path d="M0,50 L0,15 Q25,5 50,25 T100,20 L100,50 Z" fill="currentColor"></path></svg>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div class="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold flex items-center gap-2">📊 Refund &amp; Discount Volume</h2>
+          <button onclick="toggleRequestedLine()" class="text-sm border border-slate-200 rounded-md px-3 py-1.5 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Toggle Comparison</button>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="approvalTrendChart"></canvas>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 class="text-lg font-semibold mb-4">Approval Breakdown</h2>
+        <div class="relative h-48 w-full flex justify-center mt-2 cursor-pointer" onclick="switchApprovalTab('all', document.getElementById('tabBtnAll'))">
+          <canvas id="categoryChart"></canvas>
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span id="donutTotalCount" class="text-3xl font-bold text-slate-800 dark:text-white">11</span>
+            <span class="text-xs text-slate-500">Total Items</span>
+          </div>
+        </div>
+        <div class="mt-6 flex flex-col gap-2.5 text-sm font-medium">
+          <div onclick="switchApprovalTab('Refund', document.getElementById('tabBtnRefunds'))" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 p-1 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-purple-600"></span>Refunds &amp; Credits</span><span>36.4%</span></div>
+          <div onclick="switchApprovalTab('discounts', document.getElementById('tabBtnDiscounts'))" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 p-1 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>Discounts</span><span>36.4%</span></div>
+          <div onclick="switchApprovalTab('Payout', document.getElementById('tabBtnPayouts'))" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 p-1 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Payouts &amp; Disputes</span><span>27.2%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Grid: Main View (Payments OR Discounts Tab) + Quick Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+
+      <!-- Left Span 2: Switches between Payment Queue & Discounts Tab -->
+      <div class="lg:col-span-2 space-y-6">
+
+        <!-- 1. PAYMENT & REFUND APPROVAL QUEUE -->
+        <div id="paymentQueueSection" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold flex items-center gap-2">🧾 Payment &amp; Refund Queue</h2>
+            <div class="flex items-center gap-2">
+              <input id="searchApprovals" type="text" placeholder="Search customer or ID..." class="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-sm outline-none focus:border-purple-500 dark:bg-slate-900 dark:border-slate-600" />
+              <button onclick="approveAllPendingPayments()" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-colors whitespace-nowrap">✓ Approve All</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr class="border-b border-slate-100 dark:border-slate-700 text-slate-500">
+                  <th class="pb-3 font-medium px-2">Request ID</th>
+                  <th class="pb-3 font-medium px-2">Customer</th>
+                  <th class="pb-3 font-medium px-2">Type</th>
+                  <th class="pb-3 font-medium px-2">Reason</th>
+                  <th class="pb-3 font-medium px-2 text-right">Amount</th>
+                  <th class="pb-3 font-medium px-2 text-center">Status</th>
+                  <th class="pb-3 font-medium px-2 text-center">Decision</th>
+                </tr>
+              </thead>
+              <tbody id="approvalTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2. DISCOUNTS & PROMO APPROVALS TAB SECTION -->
+        <div id="discountsTabSection" class="hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div>
+              <h2 class="text-lg font-semibold flex items-center gap-2">🏷️ Discount Requests &amp; Promo Codes</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Approve custom customer discounts or toggle promo codes</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="approveAllPendingDiscounts()" class="rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-colors">✓ Approve All Discounts</button>
+              <button onclick="openModal('newDiscountModal')" class="rounded-lg bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 text-xs font-bold shadow-sm transition-colors">+ New Discount</button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm whitespace-nowrap">
+              <thead>
+                <tr class="border-b border-slate-100 dark:border-slate-700 text-slate-500">
+                  <th class="pb-3 font-medium px-2">Code / Request</th>
+                  <th class="pb-3 font-medium px-2">Customer / Scope</th>
+                  <th class="pb-3 font-medium px-2">Plan</th>
+                  <th class="pb-3 font-medium px-2 text-center">Discount</th>
+                  <th class="pb-3 font-medium px-2 text-center">Status</th>
+                  <th class="pb-3 font-medium px-2 text-center">Admin Action</th>
+                </tr>
+              </thead>
+              <tbody id="discountTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Span 1: Quick Actions & Policy Controls -->
+      <div class="space-y-6">
+        <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">⚡ Admin Quick Actions</h2>
+          <div class="grid grid-cols-2 gap-3">
+            <button onclick="openModal('newPaymentModal')" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 py-4 shadow-sm hover:border-purple-300 dark:border-slate-600 dark:bg-slate-700/40 transition-all">
+              <span class="text-xl text-purple-600">💸+</span><span class="text-xs font-medium">New Refund Req</span>
+            </button>
+            <button onclick="openModal('newDiscountModal')" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 py-4 shadow-sm hover:border-emerald-300 dark:border-slate-600 dark:bg-slate-700/40 transition-all">
+              <span class="text-xl text-emerald-500">🏷️+</span><span class="text-xs font-medium">Create Discount</span>
+            </button>
+            <button onclick="switchApprovalTab('discounts', document.getElementById('tabBtnDiscounts'))" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 py-4 shadow-sm hover:border-blue-300 dark:border-slate-600 dark:bg-slate-700/40 transition-all">
+              <span class="text-xl text-blue-600">％</span><span class="text-xs font-medium">Manage Promos</span>
+            </button>
+            <button onclick="exportApprovalsCSV()" class="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 py-4 shadow-sm hover:border-orange-300 dark:border-slate-600 dark:bg-slate-700/40 transition-all">
+              <span class="text-xl text-orange-400">📥</span><span class="text-xs font-medium">Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Auto-Approval Policy Card -->
+        <div class="rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 p-6 shadow-sm text-white relative overflow-hidden">
+          <h2 class="text-lg font-bold mb-1">🛡️ Auto-Approval Policy</h2>
+          <p class="text-indigo-100 text-xs mb-4">Automatically approve low-value refunds or discounts below your threshold.</p>
+          <div class="space-y-3 text-sm">
+            <div class="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+              <span>Max Auto-Refund ($)</span>
+              <input id="autoLimitInput" type="number" value="25" class="w-20 rounded bg-white text-slate-900 px-2 py-1 text-right font-bold outline-none" />
+            </div>
+            <div class="flex items-center justify-between bg-white/10 rounded-lg px-3 py-2">
+              <span>Max Auto-Discount (%)</span>
+              <input id="autoDiscLimitInput" type="number" value="15" max="100" class="w-20 rounded bg-white text-slate-900 px-2 py-1 text-right font-bold outline-none" />
+            </div>
+            <button onclick="runAutoApprovalRules()" class="w-full bg-white text-indigo-700 py-2 rounded-lg font-bold text-xs hover:bg-slate-100 shadow transition-all">
+              ⚡ Run Auto-Approval Now
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- New Payment / Refund Request Modal -->
+  <div id="newPaymentModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold dark:text-white">New Payment / Refund Request</h2>
+        <button onclick="closeModal('newPaymentModal')" class="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block font-medium mb-1">Customer Name</label>
+          <input id="reqCustInput" type="text" placeholder="e.g. Dennis Diaz" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1">Category</label>
+            <select id="reqTypeInput" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900">
+              <option value="Refund">Refund</option>
+              <option value="Credit">Billing Credit</option>
+              <option value="Payout">Partner Payout</option>
+              <option value="Dispute">Dispute</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium mb-1">Amount ($)</label>
+            <input id="reqAmtInput" type="number" step="0.01" value="19.99" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+          </div>
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Reason</label>
+          <input id="reqReasonInput" type="text" placeholder="e.g. Duplicate billing charge" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+        </div>
+        <button onclick="createNewPaymentRequest()" class="w-full rounded-lg bg-purple-600 py-2.5 font-bold text-white hover:bg-purple-700">Submit for Approval</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Discount / Promo Modal -->
+  <div id="newDiscountModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold dark:text-white">Create Discount / Promo Request</h2>
+        <button onclick="closeModal('newDiscountModal')" class="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="space-y-4 text-sm">
+        <div>
+          <label class="block font-medium mb-1">Promo Code or Label</label>
+          <input id="discCodeInput" type="text" placeholder="e.g. ANNUAL25" class="w-full uppercase rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+        </div>
+        <div>
+          <label class="block font-medium mb-1">Customer or Target Audience</label>
+          <input id="discCustInput" type="text" placeholder="e.g. Maksud alam or All Annual Users" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium mb-1">Plan</label>
+            <select id="discPlanInput" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900">
+              <option value="Annual Pro">Annual Pro</option>
+              <option value="Starter Plan">Starter Plan</option>
+              <option value="Enterprise">Enterprise</option>
+              <option value="All Plans">All Plans</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium mb-1">Discount (%)</label>
+            <input id="discPctInput" type="number" min="1" max="100" value="20" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 outline-none dark:border-slate-600 dark:bg-slate-900" />
+          </div>
+        </div>
+        <button onclick="createNewDiscount()" class="w-full rounded-lg bg-indigo-600 py-2.5 font-bold text-white hover:bg-indigo-700">Save Discount</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    const defaultRequests = [
+      { id: 'APR-9041', initials: 'DD', badge: 'bg-purple-100 text-purple-700', customer: 'Dennis Diaz',  type: 'Refund',  reason: 'Accidental duplicate renewal', amount: 19.99,  status: 'Pending' },
+      { id: 'APR-9040', initials: 'MA', badge: 'bg-blue-100 text-blue-700',     customer: 'Maksud alam',  type: 'Credit',  reason: 'Annual plan upgrade credit',   amount: 49.90,  status: 'Pending' },
+      { id: 'APR-9039', initials: 'SC', badge: 'bg-emerald-100 text-emerald-700',customer: 'Sarah Connor',type: 'Payout',  reason: 'Affiliate commission payout', amount: 580.00, status: 'Approved' },
+      { id: 'APR-9038', initials: 'WL', badge: 'bg-orange-100 text-orange-700', customer: 'William lowe', type: 'Dispute', reason: 'Unrecognized card chargeback', amount: 159.92, status: 'Rejected' },
+      { id: 'APR-9037', initials: 'NH', badge: 'bg-indigo-100 text-indigo-700', customer: 'Nathan',       type: 'Refund',  reason: 'Downgraded to Starter plan',   amount: 49.99,  status: 'Approved' },
+      { id: 'APR-9036', initials: 'AR', badge: 'bg-purple-100 text-purple-700', customer: 'Alex Rivera',  type: 'Payout',  reason: 'Q2 referral bonus payout',    amount: 360.00, status: 'Pending' },
+      { id: 'APR-9035', initials: 'PS', badge: 'bg-blue-100 text-blue-700',     customer: 'Priya Sharma', type: 'Dispute', reason: 'Billing cycle mismatch claim', amount: 580.00, status: 'Pending' }
+    ];
+
+    const defaultDiscounts = [
+      { id: 'DSC-101', code: 'ANNUAL20',   customer: 'Maksud alam',      plan: 'Annual Pro',   pct: 20, status: 'Pending' },
+      { id: 'DSC-102', code: 'LOYALTY15',  customer: 'Dennis Diaz',      plan: 'Pro Plan',     pct: 15, status: 'Pending' },
+      { id: 'DSC-103', code: 'WELCOME10',  customer: 'All New Signups',  plan: 'Starter Plan', pct: 10, status: 'Approved' },
+      { id: 'DSC-104', code: 'VIP30',      customer: 'Enterprise Teams', plan: 'Enterprise',   pct: 30, status: 'Approved' }
+    ];
+
+    let requests  = JSON.parse(localStorage.getItem('bl_payment_approvals')) || defaultRequests;
+    let discounts = JSON.parse(localStorage.getItem('bl_discount_approvals')) || defaultDiscounts;
+    let currentTab = 'all';
+    let currentStatus = 'all';
+
+    function saveState() {
+      localStorage.setItem('bl_payment_approvals', JSON.stringify(requests));
+      localStorage.setItem('bl_discount_approvals', JSON.stringify(discounts));
+    }
+
+    function renderAll() {
+      const q = document.getElementById('searchApprovals').value.toLowerCase().trim();
+      const tbody = document.getElementById('approvalTableBody');
+
+      const filtered = requests.filter(r => {
+        const matchTab = currentTab === 'all' || currentTab === 'discounts'
+          ? true
+          : (currentTab === 'Refund' ? (r.type === 'Refund' || r.type === 'Credit') : (r.type === 'Payout' || r.type === 'Dispute'));
+        const matchStatus = currentStatus === 'all' || r.status === currentStatus;
+        const matchSearch = r.customer.toLowerCase().includes(q) || r.id.toLowerCase().includes(q) || r.reason.toLowerCase().includes(q);
+        return matchTab && matchStatus && matchSearch;
+      });
+
+      tbody.innerHTML = filtered.map(r => {
+        const stBadge = r.status === 'Approved'
+          ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-medium dark:bg-emerald-900/30 dark:text-emerald-400">Approved</span>'
+          : r.status === 'Rejected'
+          ? '<span class="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-medium dark:bg-red-900/30 dark:text-red-400">Rejected</span>'
+          : '<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-medium dark:bg-orange-900/30 dark:text-orange-400">Pending</span>';
+
+        return `
+          <tr class="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <td onclick="alert('${r.id} — ${r.customer}\\nReason: ${r.reason}\\nAmount: $${r.amount.toFixed(2)}')" class="py-3 px-2 font-medium text-indigo-600 hover:underline cursor-pointer">${r.id}</td>
+            <td class="py-3 px-2 flex items-center gap-2"><span class="flex h-7 w-7 items-center justify-center rounded ${r.badge} font-semibold text-xs">${r.initials}</span> ${r.customer}</td>
+            <td class="py-3 px-2 text-slate-600 dark:text-slate-300">${r.type}</td>
+            <td class="py-3 px-2 text-slate-500 dark:text-slate-400 max-w-[180px] truncate">${r.reason}</td>
+            <td class="py-3 px-2 text-right font-semibold">$${r.amount.toFixed(2)}</td>
+            <td class="py-3 px-2 text-center">${stBadge}</td>
+            <td class="py-3 px-2 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="decidePayment('${r.id}', 'Approved')" class="px-2.5 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300">Approve</button>
+                <button onclick="decidePayment('${r.id}', 'Rejected')" class="px-2.5 py-1 rounded text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300">Reject</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      // Render Discounts Table
+      const discBody = document.getElementById('discountTableBody');
+      const filteredDiscounts = discounts.filter(d => currentStatus === 'all' || d.status === currentStatus);
+      discBody.innerHTML = filteredDiscounts.map(d => {
+        const badge = d.status === 'Approved'
+          ? '<span class="bg-emerald-100 text-emerald-700 px-2 py-1 rounded text-xs font-medium">Active / Approved</span>'
+          : d.status === 'Rejected'
+          ? '<span class="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-medium">Rejected</span>'
+          : '<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-medium">Pending Approval</span>';
+
+        return `
+          <tr class="border-b border-slate-50 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50">
+            <td class="py-3 px-2 font-bold text-purple-700 dark:text-purple-400"><span class="bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 px-2 py-1 rounded font-mono text-xs">${d.code}</span></td>
+            <td class="py-3 px-2 font-medium">${d.customer}</td>
+            <td class="py-3 px-2 text-slate-600 dark:text-slate-300">${d.plan}</td>
+            <td class="py-3 px-2 text-center font-bold text-emerald-600">${d.pct}% OFF</td>
+            <td class="py-3 px-2 text-center">${badge}</td>
+            <td class="py-3 px-2 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="decideDiscount('${d.id}', 'Approved')" class="px-2.5 py-1 rounded text-xs font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100">Approve</button>
+                <button onclick="decideDiscount('${d.id}', 'Rejected')" class="px-2.5 py-1 rounded text-xs font-bold bg-red-50 text-red-600 hover:bg-red-100">Reject</button>
+              </div>
+            </td>
+          </tr>`;
+      }).join('');
+
+      updateKpis();
+    }
+
+    function updateKpis() {
+      const pending = requests.filter(r => r.status === 'Pending');
+      const approved = requests.filter(r => r.status === 'Approved');
+      const rejected = requests.filter(r => r.status === 'Rejected');
+
+      const pendingSum = pending.reduce((s, r) => s + r.amount, 0);
+      const approvedSum = approved.reduce((s, r) => s + r.amount, 0);
+      const rejectedSum = rejected.reduce((s, r) => s + r.amount, 0);
+
+      document.getElementById('kpiPendingCount').textContent = pending.length;
+      document.getElementById('kpiPendingValue').textContent = `$${pendingSum.toFixed(2)} awaiting action`;
+      document.getElementById('kpiApprovedAmount').textContent = `$${approvedSum.toFixed(2)}`;
+      document.getElementById('kpiApprovedCount').textContent = `↑ ${approved.length} requests processed`;
+      document.getElementById('kpiRejectedCount').textContent = rejected.length;
+      document.getElementById('kpiRejectedAmount').textContent = `$${rejectedSum.toFixed(2)} declined`;
+
+      const activeDisc = discounts.filter(d => d.status === 'Approved').length;
+      const pendingDisc = discounts.filter(d => d.status === 'Pending').length;
+      document.getElementById('kpiActiveDiscounts').textContent = activeDisc;
+      document.getElementById('kpiPendingDiscounts').textContent = `${pendingDisc} pending approval`;
+      document.getElementById('discountTabBadge').textContent = discounts.length;
+      document.getElementById('donutTotalCount').textContent = requests.length + discounts.length;
+    }
+
+    function decidePayment(id, status) {
+      const item = requests.find(r => r.id === id);
+      if (item) { item.status = status; saveState(); renderAll(); }
+    }
+
+    function decideDiscount(id, status) {
+      const item = discounts.find(d => d.id === id);
+      if (item) { item.status = status; saveState(); renderAll(); }
+    }
+
+    function approveAllPendingPayments() {
+      requests.forEach(r => { if (r.status === 'Pending') r.status = 'Approved'; });
+      saveState();
+      renderAll();
+    }
+
+    function approveAllPendingDiscounts() {
+      discounts.forEach(d => { if (d.status === 'Pending') d.status = 'Approved'; });
+      saveState();
+      renderAll();
+    }
+
+    function runAutoApprovalRules() {
+      const maxAmt = parseFloat(document.getElementById('autoLimitInput').value) || 25;
+      const maxPct = parseFloat(document.getElementById('autoDiscLimitInput').value) || 15;
+      let count = 0;
+      requests.forEach(r => {
+        if (r.status === 'Pending' && r.amount <= maxAmt) { r.status = 'Approved'; count++; }
+      });
+      discounts.forEach(d => {
+        if (d.status === 'Pending' && d.pct <= maxPct) { d.status = 'Approved'; count++; }
+      });
+      saveState();
+      renderAll();
+      alert(`Auto-Approval complete: ${count} item(s) within threshold were approved.`);
+    }
+
+    function switchApprovalTab(tabKey, btn) {
+      currentTab = tabKey;
+      document.querySelectorAll('.ap-tab-btn').forEach(b => {
+        b.classList.remove('text-purple-600', 'border-purple-600');
+        b.classList.add('border-transparent', 'hover:text-slate-700');
+      });
+      if (btn) {
+        btn.classList.remove('border-transparent', 'hover:text-slate-700');
+        btn.classList.add('text-purple-600', 'border-purple-600');
+      }
+
+      const paySec = document.getElementById('paymentQueueSection');
+      const discSec = document.getElementById('discountsTabSection');
+
+      if (tabKey === 'discounts') {
+        paySec.classList.add('hidden');
+        discSec.classList.remove('hidden');
+      } else if (tabKey === 'all') {
+        paySec.classList.remove('hidden');
+        discSec.classList.remove('hidden');
+      } else {
+        paySec.classList.remove('hidden');
+        discSec.classList.add('hidden');
+      }
+      renderAll();
+    }
+
+    function setStatusFilter(status, label) {
+      currentStatus = status;
+      document.getElementById('activeStatusLabel').textContent = label;
+      closeApprovalMenus();
+      renderAll();
+    }
+
+    function toggleApprovalMenu(id, e) {
+      e.stopPropagation();
+      const el = document.getElementById(id);
+      const hidden = el.classList.contains('hidden');
+      closeApprovalMenus();
+      if (hidden) el.classList.remove('hidden');
+    }
+
+    function closeApprovalMenus() {
+      ['statusMenu', 'dateMenu'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
+    }
+
+    function openModal(id) {
+      const m = document.getElementById(id);
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeModal(id) {
+      const m = document.getElementById(id);
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function createNewPaymentRequest() {
+      const customer = document.getElementById('reqCustInput').value.trim() || 'New Customer';
+      const type = document.getElementById('reqTypeInput').value;
+      const amount = parseFloat(document.getElementById('reqAmtInput').value) || 19.99;
+      const reason = document.getElementById('reqReasonInput').value.trim() || 'Admin submitted request';
+      const initials = customer.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      const id = 'APR-' + (9042 + requests.length);
+      requests.unshift({ id, initials, badge: 'bg-purple-100 text-purple-700', customer, type, reason, amount, status: 'Pending' });
+      saveState();
+      renderAll();
+      closeModal('newPaymentModal');
+    }
+
+    function createNewDiscount() {
+      const code = (document.getElementById('discCodeInput').value.trim() || 'PROMO20').toUpperCase();
+      const customer = document.getElementById('discCustInput').value.trim() || 'All Customers';
+      const plan = document.getElementById('discPlanInput').value;
+      const pct = parseInt(document.getElementById('discPctInput').value, 10) || 20;
+      const id = 'DSC-' + (105 + discounts.length);
+      discounts.unshift({ id, code, customer, plan, pct, status: 'Pending' });
+      saveState();
+      switchApprovalTab('discounts', document.getElementById('tabBtnDiscounts'));
+      closeModal('newDiscountModal');
+    }
+
+    function exportApprovalsCSV() {
+      const rows = [['ID', 'Customer', 'Category', 'Amount/Discount', 'Status']];
+      requests.forEach(r => rows.push([r.id, r.customer, r.type, '$' + r.amount.toFixed(2), r.status]));
+      discounts.forEach(d => rows.push([d.id, d.customer, 'Discount (' + d.code + ')', d.pct + '% OFF', d.status]));
+      const blob = new Blob([rows.map(r => r.join(',')).join('\n')], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'payment-and-discount-approvals.csv';
+      a.click();
+    }
+
+    document.getElementById('searchApprovals').addEventListener('input', renderAll);
+
+    // Charts Initialization
+    const ctxTrend = document.getElementById('approvalTrendChart').getContext('2d');
+    const trendChart = new Chart(ctxTrend, {
+      type: 'line',
+      data: {
+        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
+        datasets: [
+          {
+            label: 'Approved ($)',
+            data: [420, 580, 490, 670, 630],
+            borderColor: '#7e22ce',
+            backgroundColor: 'rgba(126, 34, 206, 0.1)',
+            tension: 0.4, fill: true, pointRadius: 4
+          },
+          {
+            label: 'Requested ($)',
+            data: [550, 710, 620, 890, 810],
+            borderColor: '#10b981',
+            backgroundColor: 'transparent',
+            tension: 0.4, fill: false, pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top', align: 'start', labels: { usePointStyle: true, boxWidth: 8 } } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#e2e8f0', drawBorder: false } },
+          x: { grid: { display: false, drawBorder: false } }
+        }
+      }
+    });
+
+    function toggleRequestedLine() {
+      const ds = trendChart.data.datasets[1];
+      ds.hidden = !ds.hidden;
+      trendChart.update();
+    }
+
+    function setApprovalPeriod(label) {
+      document.getElementById('activePeriodLabel').textContent = label;
+      const presets = {
+        'Last 7 Days':  [[180, 220, 190, 260, 240], [230, 290, 240, 310, 295]],
+        'Last 30 Days': [[420, 580, 490, 670, 630], [550, 710, 620, 890, 810]],
+        'This Year':    [[1200, 1450, 1600, 1890, 2100], [1500, 1800, 1950, 2300, 2500]]
+      };
+      if (presets[label]) {
+        trendChart.data.datasets[0].data = presets[label][0];
+        trendChart.data.datasets[1].data = presets[label][1];
+        trendChart.update();
+      }
+      closeApprovalMenus();
+    }
+
+    const ctxCat = document.getElementById('categoryChart').getContext('2d');
+    new Chart(ctxCat, {
+      type: 'doughnut',
+      data: {
+        labels: ['Refunds & Credits', 'Discounts', 'Payouts & Disputes'],
+        datasets: [{ data: [36.4, 36.4, 27.2], backgroundColor: ['#7e22ce', '#10b981', '#3b82f6'], borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+    });
+
+    // Sync with URL hash (#discounts, #refunds, #all)
+    function checkApprovalHash() {
+      const h = location.hash.replace('#', '');
+      if (h === 'discounts') switchApprovalTab('discounts', document.getElementById('tabBtnDiscounts'));
+      else if (h === 'refunds') switchApprovalTab('Refund', document.getElementById('tabBtnRefunds'));
+      else if (h === 'all') switchApprovalTab('all', document.getElementById('tabBtnAll'));
+    }
+    window.addEventListener('hashchange', checkApprovalHash);
+
+    renderAll();
+    checkApprovalHash();
+  </script>
+</body>
+</html>

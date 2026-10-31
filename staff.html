@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brightloop – Staff Dashboard</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="h-screen flex bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans">
+
+  <div id="overlay" class="fixed inset-0 z-20 hidden bg-black/50 lg:hidden"></div>
+
+  <aside id="sidebar" class="hidden lg:static lg:flex w-64 shrink-0 flex-col bg-[#0f1b3d] p-5 text-white"></aside>
+
+  <main class="flex-1 overflow-y-auto p-6 relative">
+    <!-- Header -->
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" aria-label="Open menu" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-white/10 dark:bg-slate-800 lg:hidden">☰</button>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Staff Dashboard</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your team and monitor staff activity</p>
+        </div>
+      </div>
+      <button id="staffDateBtn" onclick="cycleStaffPeriod()" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800 hover:bg-slate-50 transition-colors">
+        📅 <span id="staffPeriodText">Last 30 Days</span> <span class="text-xs ml-1">▼</span>
+      </button>
+    </header>
+
+    <!-- Top KPI Cards -->
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div onclick="openDirectoryFiltered('all')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 hover:border-indigo-300 transition-colors cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 text-xl">👥</div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Total Staff</p>
+          <p id="totalStaffKpi" class="text-2xl font-bold">25</p>
+          <p class="text-xs text-emerald-500 mt-1 truncate">↑ 8.7% vs previous period</p>
+        </div>
+      </div>
+      <div onclick="openDirectoryFiltered('Active')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 hover:border-blue-300 transition-colors cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/50 text-xl">👤</div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Active Staff</p>
+          <p id="activeStaffKpi" class="text-2xl font-bold">22</p>
+          <p class="text-xs text-emerald-500 mt-1 truncate">↑ 10.0% vs previous period</p>
+        </div>
+      </div>
+      <div onclick="openDirectoryFiltered('On Leave')" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 hover:border-emerald-300 transition-colors cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 text-xl">🕒</div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">On Leave</p>
+          <p id="leaveStaffKpi" class="text-2xl font-bold">3</p>
+          <p class="text-xs text-red-500 mt-1 truncate">↓ 25.0% vs previous period</p>
+        </div>
+      </div>
+      <div onclick="openAddStaffModal()" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex items-center gap-4 hover:border-orange-300 transition-colors cursor-pointer">
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-600 dark:bg-orange-900/50 text-xl">💼</div>
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">New Joins</p>
+          <p id="newJoinsKpi" class="text-2xl font-bold">2</p>
+          <p class="text-xs text-emerald-500 mt-1 truncate">↑ 100% vs previous period</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+      <div class="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold">Staff Activity Overview</h2>
+          <button id="activityRangeBtn" onclick="cycleStaffPeriod()" class="text-sm border border-slate-200 rounded-md px-3 py-1.5 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">Last 30 Days ▼</button>
+        </div>
+        <div class="relative h-64 w-full">
+          <canvas id="activityChart"></canvas>
+        </div>
+      </div>
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 class="text-lg font-semibold mb-4">Staff Distribution</h2>
+        <div class="relative h-48 w-full flex justify-center mt-2 cursor-pointer" onclick="filterTopStaffByDept('all')">
+          <canvas id="distributionChart"></canvas>
+          <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span id="distTotalStaff" class="text-3xl font-bold text-slate-800 dark:text-white">25</span>
+            <span class="text-xs text-slate-500">Total Staff</span>
+          </div>
+        </div>
+        <div class="mt-6 flex flex-col gap-3 text-sm font-medium">
+          <div onclick="filterTopStaffByDept('Administrator')" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 px-1 py-0.5 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-indigo-500"></span>Admin</span><span>40.0%</span></div>
+          <div onclick="filterTopStaffByDept('Content')" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 px-1 py-0.5 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span>Content Team</span><span>36.0%</span></div>
+          <div onclick="filterTopStaffByDept('Marketing')" class="flex justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/40 px-1 py-0.5 rounded"><span class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span>Marketing</span><span>24.0%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tables & Quick Actions -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-8">
+      <div class="lg:col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800 flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-lg font-semibold">Top Performing Staff</h2>
+          <button id="openModalBtn" class="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400">View All →</button>
+        </div>
+        <div class="overflow-x-auto flex-1">
+          <table class="w-full text-left text-sm whitespace-nowrap">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-slate-700 text-slate-500">
+                <th class="pb-3 font-medium px-2">Staff Name</th>
+                <th class="pb-3 font-medium px-2">Role</th>
+                <th class="pb-3 font-medium px-2 text-center">Tasks Completed</th>
+                <th class="pb-3 font-medium px-2 text-center">Performance</th>
+              </tr>
+            </thead>
+            <tbody id="topStaffBody">
+              <tr data-role="Administrator" onclick="alert('Dennis Diaz — Administrator (48 Tasks, 98% Performance)')" class="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <td class="py-3 px-2 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-md bg-purple-100 text-purple-700 font-semibold text-xs">DD</span> Dennis Diaz</td>
+                <td class="py-3 px-2">Administrator</td>
+                <td class="py-3 px-2 text-center">48</td>
+                <td class="py-3 px-2 text-center"><span class="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">98%</span></td>
+              </tr>
+              <tr data-role="Content Editor" onclick="alert('Maksud alam — Editor (45 Tasks, 95% Performance)')" class="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <td class="py-3 px-2 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-md bg-blue-100 text-blue-700 font-semibold text-xs">MA</span> Maksud alam</td>
+                <td class="py-3 px-2">Editor</td>
+                <td class="py-3 px-2 text-center">45</td>
+                <td class="py-3 px-2 text-center"><span class="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">95%</span></td>
+              </tr>
+              <tr data-role="Content Writer" onclick="alert('William lowe — Content Writer (42 Tasks, 93% Performance)')" class="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <td class="py-3 px-2 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-md bg-orange-100 text-orange-700 font-semibold text-xs">WL</span> William lowe</td>
+                <td class="py-3 px-2">Content Writer</td>
+                <td class="py-3 px-2 text-center">42</td>
+                <td class="py-3 px-2 text-center"><span class="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">93%</span></td>
+              </tr>
+              <tr data-role="Marketing Specialist" onclick="alert('Nathan — Marketing Specialist (40 Tasks, 90% Performance)')" class="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+                <td class="py-3 px-2 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-md bg-indigo-100 text-indigo-700 font-semibold text-xs">NH</span> Nathan</td>
+                <td class="py-3 px-2">Marketing Specialist</td>
+                <td class="py-3 px-2 text-center">40</td>
+                <td class="py-3 px-2 text-center"><span class="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">90%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Interactive Quick Actions -->
+      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 class="text-lg font-semibold mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-2 gap-4">
+          <button onclick="openAddStaffModal()" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 py-6 hover:bg-slate-200 hover:border-indigo-300 dark:border-slate-600 dark:bg-slate-700/30 dark:hover:bg-slate-700/80 transition-all">
+            <span class="text-2xl text-indigo-500">👤+</span><span class="text-sm font-medium">Add Staff</span>
+          </button>
+          <button onclick="openDirectoryFiltered('all')" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 py-6 hover:bg-slate-200 hover:border-blue-300 dark:border-slate-600 dark:bg-slate-700/30 dark:hover:bg-slate-700/80 transition-all">
+            <span class="text-2xl text-blue-500">👥</span><span class="text-sm font-medium">Manage Teams</span>
+          </button>
+          <button onclick="exportStaffReport()" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 py-6 hover:bg-slate-200 hover:border-emerald-300 dark:border-slate-600 dark:bg-slate-700/30 dark:hover:bg-slate-700/80 transition-all">
+            <span class="text-2xl text-emerald-500">📊</span><span class="text-sm font-medium">View Reports</span>
+          </button>
+          <button onclick="location.href='settings.html'" class="flex flex-col items-center justify-center gap-3 rounded-xl border border-slate-100 bg-slate-50 py-6 hover:bg-slate-200 hover:border-orange-300 dark:border-slate-600 dark:bg-slate-700/30 dark:hover:bg-slate-700/80 transition-all">
+            <span class="text-2xl text-orange-500">⚙️</span><span class="text-sm font-medium">Staff Settings</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- All Staff Modal -->
+  <div id="allStaffModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm transition-opacity">
+    <div class="w-full max-w-4xl rounded-xl bg-white shadow-2xl dark:bg-slate-800 flex flex-col max-h-[85vh] animate-fade-in-up">
+      <div class="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-700">
+        <div>
+          <h2 class="text-xl font-bold dark:text-white">All Staff Directory</h2>
+          <p id="modalStaffSubtitle" class="text-sm text-slate-500 mt-1">Showing all 25 team members (click status badge to toggle Active / On Leave)</p>
+        </div>
+        <button id="closeModalBtn" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-3xl leading-none">&times;</button>
+      </div>
+      <div class="overflow-y-auto p-6">
+        <table class="w-full text-left text-sm whitespace-nowrap">
+          <thead class="sticky top-0 bg-white dark:bg-slate-800 z-10 shadow-sm">
+            <tr class="text-slate-500 border-b border-slate-200 dark:border-slate-700">
+              <th class="pb-3 font-medium px-2">Staff Member</th>
+              <th class="pb-3 font-medium px-2">Department</th>
+              <th class="pb-3 font-medium px-2 text-center">Status</th>
+              <th class="pb-3 font-medium px-2 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="modalTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Staff Modal -->
+  <div id="addStaffModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl dark:bg-slate-800">
+      <div class="flex justify-between items-center mb-4">
+        <h2 class="text-xl font-bold dark:text-white">Add Staff Member</h2>
+        <button onclick="closeAddStaffModal()" class="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Full Name</label>
+          <input id="staffNameInput" type="text" placeholder="e.g. Priya Sharma" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-600 dark:bg-slate-900">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Role / Department</label>
+          <select id="staffRoleInput" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none dark:border-slate-600 dark:bg-slate-900">
+            <option value="Administrator">Administrator</option>
+            <option value="Content Team">Content Team</option>
+            <option value="Marketing">Marketing</option>
+          </select>
+        </div>
+        <button onclick="saveNewStaff()" class="w-full rounded-lg bg-indigo-600 py-2.5 text-sm font-bold text-white hover:bg-indigo-700">Add Member</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="layout.js"></script>
+  <script>
+    const modal = document.getElementById('allStaffModal');
+    const openBtn = document.getElementById('openModalBtn');
+    const closeBtn = document.getElementById('closeModalBtn');
+    const tbody = document.getElementById('modalTableBody');
+
+    const departments = ['Administrator', 'Content Team', 'Marketing'];
+    const colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-emerald-100 text-emerald-700', 'bg-orange-100 text-orange-700'];
+    
+    let rowsHTML = '';
+    for (let i = 1; i <= 25; i++) {
+      const dept = departments[i % 3];
+      const color = colors[i % 4];
+      const isLeave = i % 8 === 0;
+      const statusText = isLeave ? 'On Leave' : 'Active';
+      const statusBadge = isLeave
+        ? '<span onclick="toggleStaffStatus(this)" class="cursor-pointer px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs">On Leave</span>'
+        : '<span onclick="toggleStaffStatus(this)" class="cursor-pointer px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 text-xs">Active</span>';
+      
+      rowsHTML += `
+        <tr data-status="${statusText}" class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+          <td class="py-4 px-2 flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-md ${color} font-bold text-xs">S${i}</span> 
+            <span class="font-medium">Staff Member ${i}</span>
+          </td>
+          <td class="py-4 px-2 text-slate-600 dark:text-slate-300">${dept}</td>
+          <td class="py-4 px-2 text-center">${statusBadge}</td>
+          <td class="py-4 px-2 text-center">
+            <button onclick="alert('Staff Member ${i}\\nDepartment: ${dept}\\nStatus: ' + this.closest('tr').dataset.status)" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs border border-indigo-200 dark:border-indigo-800 px-3 py-1 rounded">Profile</button>
+          </td>
+        </tr>
+      `;
+    }
+    tbody.innerHTML = rowsHTML;
+
+    function recalcStaffKpis() {
+      const allRows = Array.from(tbody.querySelectorAll('tr'));
+      const activeCount = allRows.filter(r => r.dataset.status === 'Active').length;
+      const leaveCount = allRows.filter(r => r.dataset.status === 'On Leave').length;
+      document.getElementById('totalStaffKpi').textContent = allRows.length;
+      document.getElementById('distTotalStaff').textContent = allRows.length;
+      document.getElementById('activeStaffKpi').textContent = activeCount;
+      document.getElementById('leaveStaffKpi').textContent = leaveCount;
+    }
+
+    function toggleStaffStatus(span) {
+      const tr = span.closest('tr');
+      if (tr.dataset.status === 'Active') {
+        tr.dataset.status = 'On Leave';
+        span.textContent = 'On Leave';
+        span.className = 'cursor-pointer px-2 py-1 rounded-full bg-red-100 text-red-600 text-xs';
+      } else {
+        tr.dataset.status = 'Active';
+        span.textContent = 'Active';
+        span.className = 'cursor-pointer px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 text-xs';
+      }
+      recalcStaffKpis();
+    }
+
+    function openDirectoryFiltered(statusFilter) {
+      Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+        r.style.display = (statusFilter === 'all' || r.dataset.status === statusFilter) ? '' : 'none';
+      });
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function filterTopStaffByDept(deptKey) {
+      Array.from(document.querySelectorAll('#topStaffBody tr')).forEach(r => {
+        r.style.display = (deptKey === 'all' || r.dataset.role.includes(deptKey)) ? '' : 'none';
+      });
+    }
+
+    openBtn.addEventListener('click', () => openDirectoryFiltered('all'));
+    closeBtn.addEventListener('click', () => { modal.classList.add('hidden'); modal.classList.remove('flex'); });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeBtn.click(); });
+
+    const ctxActivity = document.getElementById('activityChart').getContext('2d');
+    const actChart = new Chart(ctxActivity, {
+      type: 'line',
+      data: {
+        labels: ['Jun 1', 'Jun 8', 'Jun 15', 'Jun 22', 'Jun 30'],
+        datasets: [
+          { label: 'Logins', data: [12, 16, 14, 16, 17], borderColor: '#8b5cf6', backgroundColor: '#8b5cf6', tension: 0.4, fill: false, pointRadius: 4 },
+          { label: 'Tasks Completed', data: [8, 11, 10, 11, 12], borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: 0.4, fill: false, pointRadius: 4 },
+          { label: 'Projects Assigned', data: [4, 5, 6, 6, 7], borderColor: '#10b981', backgroundColor: '#10b981', tension: 0.4, fill: false, pointRadius: 4 }
+        ]
+      },
+      options: { 
+        responsive: true, 
+        maintainAspectRatio: false, 
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { position: 'top', labels: { usePointStyle: true, boxWidth: 8 } } }, 
+        scales: { y: { beginAtZero: true, max: 20, grid: { color: '#e2e8f0', drawBorder: false } }, x: { grid: { display: false, drawBorder: false } } } 
+      }
+    });
+
+    const ctxDist = document.getElementById('distributionChart').getContext('2d');
+    new Chart(ctxDist, {
+      type: 'doughnut',
+      data: {
+        labels: ['Admin', 'Content Team', 'Marketing'],
+        datasets: [{ data: [40, 36, 24], backgroundColor: ['#8b5cf6', '#3b82f6', '#10b981'], borderWidth: 0, hoverOffset: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
+    });
+
+    let periodIdx = 0;
+    const periods = [
+      { label: 'Last 30 Days', d0: [12, 16, 14, 16, 17], d1: [8, 11, 10, 11, 12], d2: [4, 5, 6, 6, 7] },
+      { label: 'Last 7 Days',  d0: [15, 18, 17, 19, 18], d1: [10, 13, 12, 14, 15], d2: [5, 7, 6, 8, 8] }
+    ];
+
+    function cycleStaffPeriod() {
+      periodIdx = (periodIdx + 1) % periods.length;
+      const p = periods[periodIdx];
+      document.getElementById('staffPeriodText').textContent = p.label;
+      document.getElementById('activityRangeBtn').textContent = p.label + ' ▼';
+      actChart.data.datasets[0].data = p.d0;
+      actChart.data.datasets[1].data = p.d1;
+      actChart.data.datasets[2].data = p.d2;
+      actChart.update();
+    }
+
+    function openAddStaffModal() {
+      const m = document.getElementById('addStaffModal');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+    }
+
+    function closeAddStaffModal() {
+      const m = document.getElementById('addStaffModal');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
+    }
+
+    function saveNewStaff() {
+      const name = document.getElementById('staffNameInput').value.trim() || 'New Staff';
+      const role = document.getElementById('staffRoleInput').value;
+      const initials = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+      const topRow = `
+        <tr data-role="${role}" onclick="alert('${name} — ${role} (35 Tasks, 92% Performance)')" class="border-b border-slate-100 dark:border-slate-700/50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
+          <td class="py-3 px-2 flex items-center gap-3"><span class="flex h-8 w-8 items-center justify-center rounded-md bg-purple-100 text-purple-700 font-semibold text-xs">${initials}</span> ${name}</td>
+          <td class="py-3 px-2">${role}</td>
+          <td class="py-3 px-2 text-center">35</td>
+          <td class="py-3 px-2 text-center"><span class="rounded-md bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">92%</span></td>
+        </tr>`;
+      document.getElementById('topStaffBody').insertAdjacentHTML('afterbegin', topRow);
+
+      const dirRow = `
+        <tr data-status="Active" class="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+          <td class="py-4 px-2 flex items-center gap-3">
+            <span class="flex h-9 w-9 items-center justify-center rounded-md bg-purple-100 text-purple-700 font-bold text-xs">${initials}</span> 
+            <span class="font-medium">${name}</span>
+          </td>
+          <td class="py-4 px-2 text-slate-600 dark:text-slate-300">${role}</td>
+          <td class="py-4 px-2 text-center"><span onclick="toggleStaffStatus(this)" class="cursor-pointer px-2 py-1 rounded-full bg-emerald-100 text-emerald-600 text-xs">Active</span></td>
+          <td class="py-4 px-2 text-center">
+            <button onclick="alert('${name} — Department: ${role}')" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs border border-indigo-200 dark:border-indigo-800 px-3 py-1 rounded">Profile</button>
+          </td>
+        </tr>`;
+      tbody.insertAdjacentHTML('afterbegin', dirRow);
+
+      recalcStaffKpis();
+      document.getElementById('newJoinsKpi').textContent = parseInt(document.getElementById('newJoinsKpi').textContent, 10) + 1;
+      document.getElementById('staffNameInput').value = '';
+      closeAddStaffModal();
+    }
+
+    function exportStaffReport() {
+      const csv = 'Name,Role,Tasks Completed,Performance\nDennis Diaz,Administrator,48,98%\nMaksud alam,Editor,45,95%\nWilliam lowe,Content Writer,42,93%\nNathan,Marketing Specialist,40,90%';
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'staff-performance-report.csv';
+      a.click();
+    }
+  </script>
+</body>
+</html>

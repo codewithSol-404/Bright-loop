@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brightloop – Settings</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>tailwind.config = { darkMode: 'class' };</script>
+</head>
+<body class="h-screen flex bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 font-sans">
+
+  <div id="overlay" class="fixed inset-0 z-20 hidden bg-black/50 lg:hidden"></div>
+  <aside id="sidebar" class="hidden lg:static lg:flex w-64 shrink-0 flex-col bg-[#0f1b3d] p-5 text-white"></aside>
+
+  <main class="flex-1 overflow-y-auto p-6 relative flex flex-col">
+    <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div class="flex items-center gap-3">
+        <button id="menuBtn" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-800 lg:hidden">☰</button>
+        <div>
+          <h1 class="text-2xl font-bold text-slate-900 dark:text-white">Settings</h1>
+          <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Configure your platform settings</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <button onclick="this.querySelector('span')?.classList.add('hidden'); alert('No new system alerts.')" class="text-slate-500 hover:text-slate-700 dark:text-slate-400 text-xl relative">
+          🔔<span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+        </button>
+        <button onclick="alert('Logged in as Admin (admin@brightloop.in)')" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <span class="bg-blue-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">AD</span> Admin ▼
+        </button>
+      </div>
+    </header>
+
+    <!-- Interactive Tabs -->
+    <div class="flex overflow-x-auto border-b border-slate-200 dark:border-slate-700 mb-6 font-medium text-sm text-slate-500 hide-scrollbar">
+      <button onclick="switchTab(this, 'general')" class="tab-btn px-4 py-3 text-purple-600 border-b-2 border-purple-600 flex items-center gap-2 whitespace-nowrap">⚙️ General</button>
+      <button onclick="switchTab(this, 'appearance')" class="tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🎨 Appearance</button>
+      <button onclick="switchTab(this, 'security')" class="tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🛡️ Security</button>
+      <button onclick="switchTab(this, 'notifications')" class="tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🔔 Notifications</button>
+      <button onclick="switchTab(this, 'integrations')" class="tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">🧩 Integrations</button>
+      <button onclick="switchTab(this, 'billing')" class="tab-btn px-4 py-3 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap border-b-2 border-transparent">💳 Billing</button>
+    </div>
+
+    <!-- Forms & Info -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-20">
+      
+      <!-- Left Column (Span 2) -->
+      <div class="lg:col-span-2 space-y-6">
+        <div id="cardPlatformInfo" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">⚙️ Platform Information</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Platform Name</label>
+              <input id="platformNameInput" type="text" value="Brightloop" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900" />
+            </div>
+            <div>
+              <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Support Email</label>
+              <input id="supportEmailInput" type="email" value="support@brightloop.com" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Site Description</label>
+            <textarea id="siteDescInput" maxlength="160" rows="2" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900">Empowering teams and growing businesses together.</textarea>
+            <p id="descCounter" class="text-right text-xs text-slate-400 mt-1">49/160</p>
+          </div>
+        </div>
+
+        <div id="cardDisplaySettings" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">🖥️ Display Settings</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Default Timezone</label>
+              <select id="tzSelect" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900 appearance-none">
+                <option>(GMT+05:30) India Standard Time</option>
+                <option>(GMT+00:00) UTC</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Date Format</label>
+              <select id="dateFmtSelect" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900 appearance-none">
+                <option>Jun 7, 2025</option>
+                <option>07/06/2025</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Time Format</label>
+              <select id="timeFmtSelect" class="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-purple-500 dark:border-slate-600 dark:bg-slate-900 appearance-none">
+                <option>12 Hour (AM/PM)</option>
+                <option>24 Hour</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Extra Interactive Tab Panel (shown on Security / Notifications / Billing tabs) -->
+        <div id="cardExtraTabPanel" class="hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 id="extraPanelTitle" class="text-lg font-semibold flex items-center gap-2 mb-4">🛡️ Security Settings</h2>
+          <div id="extraPanelBody" class="space-y-4 text-sm"></div>
+        </div>
+      </div>
+
+      <!-- Right Column (Span 1) -->
+      <div class="space-y-6">
+        <div id="cardBranding" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">🖼️ Branding</h2>
+          <div class="flex flex-col xl:flex-row gap-4 items-center xl:items-start">
+            <div id="logoPreview" class="h-24 w-24 shrink-0 rounded-2xl bg-blue-50 flex items-center justify-center text-4xl text-blue-500 font-bold border border-blue-100 overflow-hidden">∞</div>
+            <div class="text-center xl:text-left">
+              <input id="logoFileInput" type="file" accept="image/png,image/jpeg" class="hidden" onchange="previewLogo(this)">
+              <button onclick="document.getElementById('logoFileInput').click()" class="rounded-lg border border-purple-200 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100 w-full mb-2 transition-colors">☁️ Upload Logo</button>
+              <p class="text-xs text-slate-500">Recommended size: 200x60px<br>Supported formats: PNG, JPG</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="cardIntegrations" class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 class="text-lg font-semibold flex items-center gap-2 mb-4">🔗 Integrations Status</h2>
+          <ul class="space-y-4 text-sm font-medium">
+            <li onclick="toggleIntegration(this)" class="flex items-center justify-between cursor-pointer">
+              <span class="flex items-center gap-2"><span class="text-orange-500">📊</span> Google Analytics</span>
+              <span class="int-status flex items-center gap-1 text-emerald-600 text-xs"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</span>
+            </li>
+            <li onclick="toggleIntegration(this)" class="flex items-center justify-between cursor-pointer">
+              <span class="flex items-center gap-2"><span class="bg-indigo-600 text-white rounded w-5 h-5 flex items-center justify-center text-xs">S</span> Stripe</span>
+              <span class="int-status flex items-center gap-1 text-emerald-600 text-xs"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</span>
+            </li>
+            <li onclick="toggleIntegration(this)" class="flex items-center justify-between cursor-pointer">
+              <span class="flex items-center gap-2"><span class="text-blue-500">✉️</span> SendGrid</span>
+              <span class="int-status flex items-center gap-1 text-emerald-600 text-xs"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</span>
+            </li>
+            <li onclick="toggleIntegration(this)" class="flex items-center justify-between cursor-pointer">
+              <span class="flex items-center gap-2"><span class="text-red-500">💬</span> Twilio</span>
+              <span class="int-status flex items-center gap-1 text-emerald-600 text-xs"><span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixed Bottom Action Bar -->
+    <div class="mt-auto pt-4 flex flex-col md:flex-row items-center justify-between gap-4 border-t border-slate-200 dark:border-slate-700">
+      <p class="text-sm text-purple-600 bg-purple-50 px-3 py-1.5 rounded-lg flex items-center gap-2"><span class="bg-purple-200 text-purple-800 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">i</span> Changes will be saved automatically.</p>
+      <button id="saveBtn" class="w-full md:w-auto rounded-lg bg-purple-600 px-8 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-purple-700 transition-all flex items-center justify-center gap-2">
+        💾 Save Changes
+      </button>
+    </div>
+  </main>
+
+  <script src="layout.js"></script>
+  <script>
+    const savedName = localStorage.getItem('bl_platformName');
+    const savedEmail = localStorage.getItem('bl_supportEmail');
+    const savedDesc = localStorage.getItem('bl_siteDesc');
+    if (savedName) document.getElementById('platformNameInput').value = savedName;
+    if (savedEmail) document.getElementById('supportEmailInput').value = savedEmail;
+    if (savedDesc) document.getElementById('siteDescInput').value = savedDesc;
+
+    const descInput = document.getElementById('siteDescInput');
+    const descCounter = document.getElementById('descCounter');
+    function updateCounter() {
+      descCounter.textContent = `${descInput.value.length}/160`;
+    }
+    descInput.addEventListener('input', updateCounter);
+    updateCounter();
+
+    const extraTemplates = {
+      security: {
+        title: '🛡️ Security Preferences',
+        html: `
+          <label class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
+            <span>Two-Factor Authentication (2FA)</span>
+            <input type="checkbox" checked class="h-4 w-4 accent-purple-600">
+          </label>
+          <label class="flex items-center justify-between py-2">
+            <span>Session Timeout (Minutes)</span>
+            <input type="number" value="30" class="w-24 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-sm dark:border-slate-600 dark:bg-slate-900">
+          </label>`
+      },
+      notifications: {
+        title: '🔔 Notification Channels',
+        html: `
+          <label class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
+            <span>Email Alerts on New Subscription</span>
+            <input type="checkbox" checked class="h-4 w-4 accent-purple-600">
+          </label>
+          <label class="flex items-center justify-between py-2">
+            <span>Weekly Digest Report</span>
+            <input type="checkbox" checked class="h-4 w-4 accent-purple-600">
+          </label>`
+      },
+      billing: {
+        title: '💳 Billing & Plan',
+        html: `
+          <div class="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700">
+            <span>Current Plan: <strong>Enterprise Annual</strong></span>
+            <span class="text-emerald-600 font-semibold">$299/yr • Active</span>
+          </div>
+          <div class="flex items-center justify-between py-2">
+            <span>Payment Method: Visa ending in 4242</span>
+            <button onclick="alert('Payment method updated.')" class="text-purple-600 hover:underline font-medium">Update Card</button>
+          </div>`
+      }
+    };
+
+    function switchTab(clickedBtn, tabKey) {
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-purple-600', 'border-purple-600');
+        btn.classList.add('border-transparent', 'hover:text-slate-700');
+      });
+      clickedBtn.classList.remove('border-transparent', 'hover:text-slate-700');
+      clickedBtn.classList.add('text-purple-600', 'border-purple-600');
+
+      const extraCard = document.getElementById('cardExtraTabPanel');
+      if (extraTemplates[tabKey]) {
+        extraCard.classList.remove('hidden');
+        document.getElementById('extraPanelTitle').innerHTML = extraTemplates[tabKey].title;
+        document.getElementById('extraPanelBody').innerHTML = extraTemplates[tabKey].html;
+      } else {
+        extraCard.classList.add('hidden');
+      }
+
+      const map = {
+        general: ['cardPlatformInfo', 'cardDisplaySettings', 'cardBranding', 'cardIntegrations'],
+        appearance: ['cardDisplaySettings', 'cardBranding'],
+        security: ['cardPlatformInfo'],
+        notifications: ['cardIntegrations'],
+        integrations: ['cardIntegrations'],
+        billing: ['cardPlatformInfo']
+      };
+      const visible = map[tabKey] || map.general;
+      ['cardPlatformInfo', 'cardDisplaySettings', 'cardBranding', 'cardIntegrations'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible.includes(id) ? '' : 'none';
+      });
+    }
+
+    function previewLogo(input) {
+      if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          document.getElementById('logoPreview').innerHTML = `<img src="${e.target.result}" alt="Logo" class="h-full w-full object-contain">`;
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function toggleIntegration(li) {
+      const st = li.querySelector('.int-status');
+      const isConn = st.textContent.includes('Connected');
+      if (isConn) {
+        st.className = 'int-status flex items-center gap-1 text-slate-400 text-xs';
+        st.innerHTML = '<span class="h-2 w-2 rounded-full bg-slate-400"></span> Disconnected';
+      } else {
+        st.className = 'int-status flex items-center gap-1 text-emerald-600 text-xs';
+        st.innerHTML = '<span class="h-2 w-2 rounded-full bg-emerald-500"></span> Connected';
+      }
+    }
+
+    function persistSettings() {
+      const pName = document.getElementById('platformNameInput').value.trim() || 'Brightloop';
+      localStorage.setItem('bl_platformName', pName);
+      localStorage.setItem('bl_supportEmail', document.getElementById('supportEmailInput').value.trim());
+      localStorage.setItem('bl_siteDesc', document.getElementById('siteDescInput').value);
+      const brandEl = document.getElementById('sidebarBrandName');
+      if (brandEl) brandEl.textContent = pName;
+    }
+
+    ['platformNameInput', 'supportEmailInput', 'siteDescInput', 'tzSelect', 'dateFmtSelect', 'timeFmtSelect'].forEach(id => {
+      document.getElementById(id).addEventListener('change', persistSettings);
+    });
+
+    document.getElementById('saveBtn').addEventListener('click', function() {
+      persistSettings();
+      const originalText = this.innerHTML;
+      this.innerHTML = '✓ Saved Successfully';
+      this.classList.replace('bg-purple-600', 'bg-emerald-600');
+      this.classList.replace('hover:bg-purple-700', 'hover:bg-emerald-700');
+      
+      setTimeout(() => {
+        this.innerHTML = originalText;
+        this.classList.replace('bg-emerald-600', 'bg-purple-600');
+        this.classList.replace('hover:bg-emerald-700', 'hover:bg-purple-700');
+      }, 2000);
+    });
+  </script>
+</body>
+</html>
